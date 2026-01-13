@@ -114,7 +114,18 @@ const { pool } = require('./conn');
     } finally {
         conn.release();
     }
+    };
+    async function updateUserByAdmin(id, data) {
+    const conn = await pool.getConnection();
+    try {
+        await conn.query(
+            "UPDATE users SET first_name=?, last_name=?, status=? WHERE id=?",
+            [data.first_name, data.last_name, data.status, id]
+        );
+    } finally {
+        conn.release();
     }
+}
 
     module.exports = {
     checkemail,
@@ -124,5 +135,6 @@ const { pool } = require('./conn');
     updatepassword,
     updateRole,
     listUsers,
-    deleteuser
+    deleteuser,
+    updateUserByAdmin
     };
