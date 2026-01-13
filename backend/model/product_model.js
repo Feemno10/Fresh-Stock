@@ -1,17 +1,41 @@
 const { pool } = require('./conn');
 
-/* ======================
-   GET
-====================== */
+/* ===========================
+   CREATE PRODUCT
+=========================== */
+async function createProduct(data) {
+  const conn = await pool.getConnection();
+  try {
+    const result = await conn.query(
+      `INSERT INTO products
+       (name, category_id, unit, quantity, min_stock)
+       VALUES (?, ?, ?, ?, ?)`,
+      [
+        data.name,
+        data.category_id,
+        data.unit,
+        data.quantity || 0,
+        data.min_stock || 0
+      ]
+    );
+    return result.insertId;
+  } finally {
+    conn.release();
+  }
+}
 
-// ดึงสินค้าทั้งหมด
-async function listProducts() {
+/* ===========================
+   GET ALL PRODUCTS
+=========================== */
+async function getAllProducts() {
   const conn = await pool.getConnection();
   try {
     const rows = await conn.query(
-      `SELECT id, name, category_id, unit, min_stock
-       FROM products
-       ORDER BY id DESC`
+      `SELECT p.id, p.name, p.unit, p.quantity, p.min_stock,
+              c.id AS category_id, c.name AS category_name
+       FROM products p
+       LEFT JOIN categories c ON p.category_id = c.id
+       ORDER BY p.id DESC`
     );
     return rows;
   } finally {
@@ -19,7 +43,9 @@ async function listProducts() {
   }
 }
 
-// ดึงสินค้าตาม id
+/* ===========================
+   GET PRODUCT BY ID
+=========================== */
 async function getProductById(id) {
   const conn = await pool.getConnection();
   try {
@@ -33,59 +59,21 @@ async function getProductById(id) {
   }
 }
 
-// ดึงสินค้าตาม category
-async function getProductByCategory(category_id) {
-  const conn = await pool.getConnection();
-  try {
-    const rows = await conn.query(
-      `SELECT * FROM products WHERE category_id = ?`,
-      [category_id]
-    );
-    return rows;
-  } finally {
-    conn.release();
-  }
-}
-
-/* ======================
-   CREATE
-====================== */
-
-async function createProduct(data) {
-  const conn = await pool.getConnection();
-  try {
-    const result = await conn.query(
-      `INSERT INTO products
-       (name, category_id, unit, min_stock)
-       VALUES (?, ?, ?, ?)`,
-      [
-        data.name,
-        data.category_id,
-        data.unit,
-        data.min_stock || 0
-      ]
-    );
-    return result.insertId;
-  } finally {
-    conn.release();
-  }
-}
-
-/* ======================
-   UPDATE
-====================== */
-
+/* ===========================
+   UPDATE PRODUCT
+=========================== */
 async function updateProduct(id, data) {
   const conn = await pool.getConnection();
   try {
     await conn.query(
       `UPDATE products
-       SET name = ?, category_id = ?, unit = ?, min_stock = ?
+       SET name = ?, category_id = ?, unit = ?, quantity = ?, min_stock = ?
        WHERE id = ?`,
       [
         data.name,
         data.category_id,
         data.unit,
+        data.quantity,
         data.min_stock,
         id
       ]
@@ -95,10 +83,9 @@ async function updateProduct(id, data) {
   }
 }
 
-/* ======================
-   DELETE
-====================== */
-
+/* ===========================
+   DELETE PRODUCT
+=========================== */
 async function deleteProduct(id) {
   const conn = await pool.getConnection();
   try {
@@ -111,11 +98,28 @@ async function deleteProduct(id) {
   }
 }
 
+/* ===========================
+   LOW STOCK ALERT
+=========================== */
+async function getLowStock() {
+  const conn = await pool.getConnection();
+  try {
+    const rows = await conn.query(
+      `SELECT id, name, quantity, min_stock
+       FROM products
+       WHERE quantity <= min_stock`
+    );
+    return rows;
+  } finally {
+    conn.release();
+  }
+}
+
 module.exports = {
-  listProducts,
-  getProductById,
-  getProductByCategory,
   createProduct,
+  getAllProducts,
+  getProductById,
   updateProduct,
-  deleteProduct
+  deleteProduct,
+  getLowStock
 };
